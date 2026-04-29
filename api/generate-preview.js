@@ -1,11 +1,7 @@
 import { GoogleGenAI } from "@google/genai";
 
-const ai = new GoogleGenAI({
-  apiKey: process.env.GEMINI_API_KEY
-});
-
 export default async function handler(req, res) {
-  res.setHeader("Access-Control-Allow-Origin", "https://suvicart.in");
+  res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
 
@@ -18,15 +14,19 @@ export default async function handler(req, res) {
   }
 
   try {
+    const ai = new GoogleGenAI({
+      apiKey: process.env.GEMINI_API_KEY
+    });
+
     const {
-      productType,
-      shape,
-      rawMaterials,
-      colorTheme,
-      placement,
-      angle,
-      customerDescription
-    } = req.body;
+      productType = "Resin Tray",
+      shape = "Rectangle",
+      rawMaterials = [],
+      colorTheme = "Pink",
+      placement = "Center",
+      angle = "Top View",
+      customerDescription = ""
+    } = req.body || {};
 
     const prompt = `
 Create a hyper-realistic premium handmade resin product image.
@@ -34,43 +34,40 @@ Create a hyper-realistic premium handmade resin product image.
 Product type: ${productType}
 Shape: ${shape}
 Color theme: ${colorTheme}
-Raw materials: ${Array.isArray(rawMaterials) ? rawMaterials.join(", ") : rawMaterials}
+Materials: ${Array.isArray(rawMaterials) ? rawMaterials.join(", ") : rawMaterials}
 Placement: ${placement}
-View angle: ${angle}
+Angle: ${angle}
 
 Customer description:
 "${customerDescription}"
 
+Style:
+- glossy resin finish
+- soft pink studio background
+- premium handmade look
+- realistic lighting and reflections
+
 Rules:
-- Glossy resin finish
-- Premium handmade look
-- Soft pink studio background
-- Realistic shadows and reflections
-- Materials should look embedded inside resin
-- No watermark
-- No logo
-- No human hands
-- No unwanted text
+- no watermark
+- no logo
+- no text unless requested
+- no human hands
 `;
 
     const response = await ai.models.generateImages({
       model: "imagen-4.0-generate-001",
       prompt,
-      config: {
-        numberOfImages: 1
-      }
+      config: { numberOfImages: 1 }
     });
 
-    const imageBase64 = response.generatedImages[0].image.imageBytes;
+    const image = response.generatedImages[0].image.imageBytes;
 
     return res.status(200).json({
-      image: `data:image/png;base64,${imageBase64}`
+      image: `data:image/png;base64,${image}`
     });
 
   } catch (error) {
     console.error(error);
-    return res.status(500).json({
-      error: "Image generation failed"
-    });
+    return res.status(500).json({ error: "failed" });
   }
 }
