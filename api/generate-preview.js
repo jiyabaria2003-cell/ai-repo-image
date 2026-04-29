@@ -27,35 +27,37 @@ export default async function handler(req, res) {
     } = req.body || {};
 
     const prompt = `
-Create a hyper-realistic premium handmade resin product image.
+Create a realistic premium handmade resin craft product.
 
 Product type: ${productType}
 Shape: ${shape}
 Color theme: ${colorTheme}
 Raw materials: ${Array.isArray(rawMaterials) ? rawMaterials.join(", ") : rawMaterials}
 Placement: ${placement}
-View angle: ${angle}
+Camera angle: ${angle}
+Customer idea: ${customerDescription}
 
-Customer description:
-"${customerDescription}"
-
-Style:
-glossy resin finish, premium handmade look, soft pink studio background,
-realistic lighting, realistic reflections, elegant resin depth.
-
-Rules:
-No watermark, no logo, no human hands, no unwanted text.
+Make it glossy resin, premium handmade, soft pink studio background, realistic lighting.
+No watermark, no logo, no human hands.
 `;
 
-    const response = await ai.models.generateImages({
-      model: "imagen-4.0-generate-001",
-      prompt,
-      config: {
-        numberOfImages: 1
-      }
+    const response = await ai.models.generateContent({
+      model: "gemini-3.1-flash-image-preview",
+      contents: [prompt]
     });
 
-    const imageBase64 = response.generatedImages[0].image.imageBytes;
+    let imageBase64 = null;
+
+    for (const part of response.candidates[0].content.parts) {
+      if (part.inlineData && part.inlineData.data) {
+        imageBase64 = part.inlineData.data;
+        break;
+      }
+    }
+
+    if (!imageBase64) {
+      throw new Error("No image returned from Gemini");
+    }
 
     return res.status(200).json({
       image: `data:image/png;base64,${imageBase64}`,
